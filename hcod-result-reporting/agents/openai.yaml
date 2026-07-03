@@ -1,0 +1,4 @@
+interface:
+  display_name: "HCOD Result Reporting"
+  short_description: "Archive and analyze HCOD experiment results"
+  default_prompt: "Use $hcod-result-reporting after an HCOD experiment finishes to confirm the output location, archive logs, visualize training, pick the best iteration, and collect paper metrics."
