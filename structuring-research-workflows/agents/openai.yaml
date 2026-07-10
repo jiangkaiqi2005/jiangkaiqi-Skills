@@ -1,0 +1,4 @@
+interface:
+  display_name: "视觉科研流程结构化"
+  short_description: "将广义计算机视觉方法整理为详细流程和论文流程图提示词"
+  default_prompt: "Use $structuring-research-workflows 将这份计算机视觉论文、代码或实验配置整理为详细流程说明和可直接用于生成论文流程图的完整提示词。"
