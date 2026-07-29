@@ -1,0 +1,4 @@
+interface:
+  display_name: "CUMCM 国赛全流程建模"
+  short_description: "按优秀论文特征执行国赛建模、求解验证、成文与提交审查"
+  default_prompt: "请使用 $forge-cumcm-solution 高质量完成当前国赛任务；默认每个阶段经八席满分评审后暂停，只有我明确要求端到端时才连续推进。"
