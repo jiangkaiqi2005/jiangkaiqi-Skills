@@ -11,10 +11,8 @@ Choose one method:
 ### Option 1: Clone with Git
 
 ```bash
-git clone https://github.com/<your-name>/<your-repo>.git
+git clone https://github.com/jiangkaiqi2005/jiangkaiqi-Skills.git
 ```
-
-Replace the URL with the actual GitHub repository URL after publishing.
 
 ### Option 2: Download ZIP
 

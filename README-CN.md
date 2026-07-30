@@ -11,10 +11,8 @@
 ### 方式一：使用 Git 克隆
 
 ```bash
-git clone https://github.com/<your-name>/<your-repo>.git
+git clone https://github.com/jiangkaiqi2005/jiangkaiqi-Skills.git
 ```
-
-发布到 GitHub 后，请把上面的地址替换成真实仓库地址。
 
 ### 方式二：下载 ZIP
 
