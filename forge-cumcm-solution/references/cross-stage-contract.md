@@ -74,7 +74,7 @@ ID 一旦冻结不得换义。不同对象、场景、时间窗、分母或单�
 `LOAD_GUIDE`、`BUILD_EXECUTION_CONTRACT`、`HIGH_QUALITY_EXECUTION`、
 `EXECUTOR_SELF_REVIEW`、`FREEZE_CANDIDATE`、
 并随候选冻结。评审开始后另建不进入候选的 `stage-workflow-record`，只追加
-`review_plan.required_role_ids`、`additional_role_ids`、评审开始/完成时间和状态轨迹。
+`review_plan.required_role_ids`、`additional_role_ids` 和评审开始/完成时间。
 它不得改写执行合同或自审证据。`INDEPENDENT_BLIND_REVIEW` 是评审记录中的第六个里程碑，不增加额外评审层。
 
 ## 4. 结果证据合同
@@ -153,16 +153,7 @@ ID 一旦冻结不得换义。不同对象、场景、时间窗、分母或单�
 
 ## 8. 状态、回退和阻塞
 
-执行期只需要区分：
-
-- `EXECUTING`：正在高质量执行；
-- `SELF_REVIEW`：执行者预审与修正；
-- `EXPERT_REVIEW`：八席独立评审；
-- `REVISION`：评审后内部返工；
-- `PASS`：同一冻结版本八席全部满分；
-- `BLOCKED`：缺少材料、环境、证据或独立评审能力。
-
-只有 `PASS` 对应 `USER_VISIBLE_PASS`；其他状态只允许进度汇报。`PASS` 后发现新事实或任何产物变化，可以回到 `EXECUTING`、`REVISION` 或 `BLOCKED`，不能保留旧分数。
+执行期用少量状态描述进度：`NOT_STARTED` 尚未开工，`EXECUTING` 正在高质量执行，`SELF_REVIEW` 执行者预审与修正，`EXPERT_REVIEW` 八席独立评审，`REVISION` 评审后内部返工，`PASS` 同一冻结版本八席全部满分，`BLOCKED` 缺少材料、环境、证据或独立评审能力。这些字面值被清单和门禁脚本按精确字符串校验，写入 JSON 时不得翻译或改写。只有 `PASS` 对应 `USER_VISIBLE_PASS`，其他状态只允许进度汇报。`PASS` 后发现新事实或任何产物变化，回到 `EXECUTING`、`REVISION` 或 `BLOCKED`，不能保留旧分数。
 
 阻塞记录要写清事实、受影响小问/产物、已经尝试的检查、所需材料和恢复后的下一动作。最小结构为：
 
@@ -172,11 +163,6 @@ ID 一旦冻结不得换义。不同对象、场景、时间窗、分母或单�
   "stage": 2,
   "stage_status": "BLOCKED",
   "visibility_status": "BLOCKED",
-  "state_history": [
-    {"state": "NOT_STARTED", "at": "完整带时区时间", "actor_id": "执行者"},
-    {"state": "EXECUTING", "at": "完整带时区时间", "actor_id": "执行者"},
-    {"state": "BLOCKED", "at": "完整带时区时间", "actor_id": "执行者"}
-  ],
   "blockers": [{
     "category": "data | rule | environment | evidence | review",
     "reason": "可核实事实",
@@ -185,29 +171,14 @@ ID 一旦冻结不得换义。不同对象、场景、时间窗、分母或单�
     "resume_condition": "可判定恢复条件"
   }],
   "checkpoint": {
-    "saved_at": "不早于最后状态的带时区时间",
-    "actor_id": "执行者",
-    "environment": "当前可复现环境",
+    "saved_at": "完整带时区时间",
     "next_action": "恢复后第一项具体动作",
-    "resume_from": "EXECUTING",
-    "last_trusted_version_id": null,
-    "completed_steps": ["LOAD_GUIDE"],
-    "completed_artifacts": [
-      {"id": "产物 ID", "path": "相对路径", "sha256": "SHA-256"}
-    ],
-    "frozen_inputs": [
-      {"path": "相对路径", "sha256": "SHA-256"}
-    ],
-    "blocker_handling": {
-      "status": "COMPLETE",
-      "entered_at": "进入 BLOCKED 的带时区时间",
-      "blocker_indices": [0]
-    }
+    "resume_from": "EXECUTING"
   }
 }
 ```
 
-`last_trusted_version_id` 在尚未冻结任何候选时为 `null`，否则写最后可信 `version_id`。`completed_artifacts` 可为空但必须显式存在；`completed_steps` 至少记录一项真实完成步骤。用：
+非 `BLOCKED` 的中断恢复检查点用同一结构：`stage_status` 写当前状态，`blockers` 留空；`resume_from` 写恢复后要回到的合法非 `PASS` 状态。用：
 
 `python scripts/check_stage_gate.py --manifest <检查点> --stage <1|2|3> --checkpoint`
 

@@ -1,6 +1,6 @@
 ---
 name: forge-cumcm-modeling
-description: 执行 forge-cumcm-solution 的阶段一：读取 CUMCM 赛题、附件、官方规则和已有材料，完成审题、对象口径、小问关系、核心机制、假设、基础与改进模型、模型接口、方法路由、验证计划和风险审计。用于新题建模、已有方案复核，或后续阶段发现机制和口径错误后的回退。
+description: 执行 forge-cumcm-solution 的阶段一：读取 CUMCM 赛题、附件、官方规则和已有材料，完成审题、对象口径、小问关系、核心机制、假设、基础与改进模型、模型接口、方法路由和风险审计，并产出人可读的建模总结。用于新题建模、已有方案复核，或后续阶段发现机制和口径错误后的回退。
 ---
 
 # 阶段一：审题与模型
@@ -59,25 +59,24 @@ description: 执行 forge-cumcm-solution 的阶段一：读取 CUMCM 赛题、�
 
 ## 4. 路由算法与验证
 
-先判断题目属于单一主型还是分层混合型，并逐问记录“主/混合题型判定—判定依据—题型特有风险—必需验证证据”；再识别解析、单调、递推、凸性、图结构、降维、枚举和小规模精确结构，最后才考虑启发式、仿真或机器学习。逐问记录：
+先判断题目属于单一主型还是分层混合型，再识别解析、单调、递推、凸性、图结构、降维、枚举和小规模精确结构，最后才考虑启发式、仿真或机器学习。逐问记录：
 
-| 主/混合题型及依据 | 模型结构 | 基线 | 主方法 | 约束处理 | 参数来源 | 停止条件 | 资源预算 | 特有风险与独立验证 |
-|---|---|---|---|---|---|---|---|---|
+| 主/混合题型及依据 | 模型结构 | 基线 | 主方法 | 约束处理 | 参数来源 | 停止条件 | 资源预算 |
+|---|---|---|---|---|---|---|---|
 
-验证计划必须覆盖直接作答、全部硬约束、内部一致性和至少一种独立错误源的检查。敏感性只针对会影响结论且有现实含义的参数；若没有合适参数，改做边界、反例、扰动可行性或模型比较，不伪造敏感性分析。
-
-数据任务还要冻结独立实验单位、有效样本量、时间/群组划分、泄漏风险、标签质量和外推边界；非数据任务写明不适用理由。
+每个方法写下对应的验证方向；验证的设计和执行在阶段二完成，本阶段不产出验证计划。
 
 ## 5. 产出与执行者预审
 
 形成以下可读产物；实现时可按项目需要合并文件，但阶段清单保留稳定 ID：
 
-- `input-inventory`、`official-requirements`
-- `research-record`、`proposal-input-packet`、`proposal-set`、`proposal-selection`
-- `task-matrix`、`dependency-map`、`scope-ledger`
-- `core-mechanism`、`assumption-register`、`five-layer-model`
-- `model-interfaces`、`method-map`、`validation-plan`、`data-validity-plan`
-- `risk-register`、`stage1-contract`、`execution-record`、`version-index`、`stage-workflow-record`
+- `input-inventory`（官方要求一并登记）、`research-record`
+- `proposal-input-packet`、`proposal-set`、`proposal-selection`
+- `task-matrix`（含小问依赖与口径冻结）、`core-mechanism`（含五层展开）、`assumption-register`
+- `model-interfaces`、`method-map`、`risk-register`、`stage1-contract`
+- `modeling-summary`、`execution-record`、`version-index`、`stage-workflow-record`
+
+`modeling-summary` 是阶段一交付时给用户读的主文件：一个 markdown 总结，至少写清问题描述（题意、对象、逐问任务）和建模方法（核心机制、关键假设、模型与方法选择），不堆流程细节。
 
 冻结前，执行者按阶段一八席量表逐席攻击成果：漏问/口径、领域机制、数学严谨性、可辨识性、创新真实性、简洁高效、资源可实现性和反例。发现问题先自行修改；自评证据不支持 100 分时不得送审。
 

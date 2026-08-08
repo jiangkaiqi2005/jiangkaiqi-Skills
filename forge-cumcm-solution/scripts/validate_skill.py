@@ -138,7 +138,6 @@ def validate(root: Path, source: Path | None = None) -> list[str]:
             "执行是本 Skill 的主体",
             "每阶段的执行循环",
             "八席独立评审与迭代",
-            "不再增加 27 席",
             "stages/01-modeling/SKILL.md",
             "stages/02-solving/SKILL.md",
             "stages/03-paper/SKILL.md",
@@ -150,7 +149,7 @@ def validate(root: Path, source: Path | None = None) -> list[str]:
 
     required_tokens = {
         "stages/01-modeling/SKILL.md": (
-            "official-requirements", "stage1-contract",
+            "modeling-summary", "stage1-contract",
             "执行合同", "执行者预审", "八席评审",
             "多路独立方案与论文融合", "至少八个独立方案 Agent",
             "proposal-input-packet", "proposal-set", "proposal-selection",
@@ -237,6 +236,7 @@ def validate(root: Path, source: Path | None = None) -> list[str]:
         path
         for path in root.rglob("*")
         if path.is_file() and path.suffix.lower() in {".md", ".yaml", ".py"}
+        and not path.relative_to(root).parts[0].startswith(".")
     ]
     absolute_patterns = [
         re.compile(r"[A-Za-z]:\\"),
@@ -288,7 +288,7 @@ def validate(root: Path, source: Path | None = None) -> list[str]:
         elif guide_snapshot.is_file() and source.read_bytes() != guide_snapshot.read_bytes():
             errors.append("bundled guide snapshot is not byte-identical to the source")
 
-    for unwanted in ("README.md", "assets", "tools"):
+    for unwanted in ("assets", "tools"):
         if (root / unwanted).exists():
             errors.append(f"extraneous or vendored legacy content present: {unwanted}")
     invalid_init = list(root.rglob("*.invalid-init-encoding"))
@@ -296,8 +296,11 @@ def validate(root: Path, source: Path | None = None) -> list[str]:
         errors.append("invalid initializer artifacts remain")
     cache_artifacts = [
         path for path in root.rglob("*")
-        if any(part in {"__pycache__", ".pytest_cache"} for part in path.parts)
-        or path.suffix.lower() == ".pyc"
+        if not path.relative_to(root).parts[0].startswith(".")
+        and (
+            any(part in {"__pycache__", ".pytest_cache"} for part in path.parts)
+            or path.suffix.lower() == ".pyc"
+        )
     ]
     if cache_artifacts:
         errors.append("cache or compiled Python artifacts remain in the Skill package")

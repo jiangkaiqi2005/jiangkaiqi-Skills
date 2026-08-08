@@ -57,7 +57,7 @@ description: 执行 forge-cumcm-solution 的阶段三：只依据已验证结果
 - 输入—代码—输出—图表—论文位置映射；
 - 参考文献、支撑材料、匿名和 AI 使用披露。
 
-阶段清单登记 `research-record`、`editable-paper`、`final-pdf`、`abstract-audit`、`formula-symbol-citation-audit`、`figure-table-audit`、`consistency-audit`、`submission-inventory`、`integrity-audit`、`paper-evidence-contract`、`execution-record`、`version-index` 和 `stage-workflow-record`。
+阶段清单登记 `research-record`、`editable-paper`、`final-pdf`、`consistency-audit`（覆盖摘要、公式符号引用和图表的审计内容）、`submission-inventory`、`integrity-audit`、`paper-evidence-contract`、`execution-record`、`version-index` 和 `stage-workflow-record`。
 
 ## 6. 执行者预审与八席终审
 

@@ -70,22 +70,13 @@ class RequiredScenarioTests(unittest.TestCase):
 
     def test_scenario_stage2_rollback_to_stage1(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
-            path = build_checkpoint(
-                Path(temp),
-                ["NOT_STARTED", "EXECUTING", "SELF_REVIEW", "EXPERT_REVIEW", "PASS", "BLOCKED"],
-                "BLOCKED",
-            )
+            path = build_checkpoint(Path(temp), "BLOCKED")
             from check_stage_gate import validate_checkpoint
             self.assertEqual(validate_checkpoint(path, 1), [])
 
     def test_scenario_stage3_rollback_to_stage2(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
-            path = build_checkpoint(
-                Path(temp),
-                ["NOT_STARTED", "EXECUTING", "SELF_REVIEW", "EXPERT_REVIEW", "PASS", "EXECUTING", "BLOCKED"],
-                "BLOCKED",
-                stage=2,
-            )
+            path = build_checkpoint(Path(temp), "BLOCKED", stage=2)
             from check_stage_gate import validate_checkpoint
             self.assertEqual(validate_checkpoint(path, 2), [])
 
@@ -123,11 +114,7 @@ class RequiredScenarioTests(unittest.TestCase):
 
     def test_scenario_resume_after_interruption(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
-            path = build_checkpoint(
-                Path(temp),
-                ["NOT_STARTED", "EXECUTING", "BLOCKED", "EXECUTING"],
-                "EXECUTING",
-            )
+            path = build_checkpoint(Path(temp), "EXECUTING")
             from check_stage_gate import validate_checkpoint
             self.assertEqual(validate_checkpoint(path, 1), [])
 

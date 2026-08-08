@@ -66,6 +66,33 @@ class ValidateSkillTests(unittest.TestCase):
                 for error in errors
             ))
 
+    def test_stage1_modeling_summary_token_is_required(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            copy = Path(temp) / "skill"
+            shutil.copytree(SKILL_ROOT, copy)
+            stage1 = copy / "stages/01-modeling/SKILL.md"
+            stage1.write_text(
+                stage1.read_text(encoding="utf-8").replace(
+                    "modeling-summary", "stage-summary"
+                ),
+                encoding="utf-8",
+            )
+            errors = validate(copy)
+            self.assertTrue(any(
+                "stages/01-modeling/SKILL.md" in error
+                and "modeling-summary" in error
+                for error in errors
+            ))
+
+    def test_removed_official_requirements_token_is_not_enforced(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            copy = Path(temp) / "skill"
+            shutil.copytree(SKILL_ROOT, copy)
+            errors = validate(copy)
+            self.assertFalse(any(
+                "official-requirements" in error for error in errors
+            ))
+
     def test_dynamic_proposal_and_separate_final_review_are_required(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             copy = Path(temp) / "skill"

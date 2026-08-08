@@ -79,11 +79,11 @@ description: 执行 forge-cumcm-solution 的阶段二：把已冻结的 CUMCM �
 
 阶段清单登记：
 
-- `research-record`、`code-bundle`、`environment-record`、`run-commands`
+- `research-record`、`code-bundle`、`run-commands`
 - `result-files`、`constraint-certificate`、`independent-validation`
 - `sensitivity-analysis`（可包含不适用理由及替代稳健性检查）
-- `evidence-ledger`、`number-ledger`、`figures-manifest`
-- `reproduction-record`、`data-validity-audit`、`result-evidence-contract`
+- `number-ledger`、`figures-manifest`
+- `reproduction-record`（含环境版本）、`data-validity-audit`、`result-evidence-contract`（逐问登记 EVID-* 证据）
 - `execution-record`、`version-index`、`stage-workflow-record`
 
 执行者先按阶段二八席量表，从数值、工程、实验统计、数据、性能、复现、可视化和模型—代码一致性逐席攻击并修正。随后按[评审量表](../../references/review-rubrics.md)调用八个全新独立身份；需要时增加 `ADDITIONAL-*`。

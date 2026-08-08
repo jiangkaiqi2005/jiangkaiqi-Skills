@@ -200,14 +200,7 @@ def build_manifest(
         },
         "candidate_frozen_at": iso(5),
         "steps": [
-            {
-                "sequence": index + 1,
-                "name": name,
-                "status": "COMPLETE",
-                "actor_id": "executor",
-                "completed_at": iso((1, 2, 3, 4, 5)[index]),
-                "evidence_artifact_ids": [anchor_id],
-            }
+            {"name": name, "completed_at": iso((1, 2, 3, 4, 5)[index])}
             for index, name in enumerate(WORKFLOW_STEPS[:5])
         ],
     }
@@ -253,7 +246,9 @@ def build_manifest(
     })
 
     evidence_paths = [
-        path.name for artifact_id, path in sorted(artifact_paths.items())
+        path.name
+        for artifact_id, path in sorted(artifact_paths.items())
+        if artifact_id not in {"execution-record", "final-pdf"}
     ][:3]
     reviews: list[dict] = []
     providers: list[str] = []
@@ -354,13 +349,6 @@ def build_manifest(
         },
         "review_started_at": iso(5, 30),
         "review_completed_at": iso(14),
-        "state_history": [
-            {"state": "NOT_STARTED", "at": iso(0), "actor_id": "executor"},
-            {"state": "EXECUTING", "at": iso(0, 30), "actor_id": "executor"},
-            {"state": "SELF_REVIEW", "at": iso(3, 30), "actor_id": "executor"},
-            {"state": "EXPERT_REVIEW", "at": iso(5, 30), "actor_id": "executor"},
-            {"state": "PASS", "at": iso(13), "actor_id": "gate"},
-        ],
     }
     write_json(workflow_path, workflow)
     artifacts.append({
@@ -439,52 +427,27 @@ def update_frozen_artifact_and_version(
 
 
 def build_checkpoint(
-    root: Path, state_history: list[str], final_state: str, stage: int = 1,
+    root: Path, final_state: str, stage: int = 1,
+    blockers: list[dict] | None = None,
 ) -> Path:
-    source = root / "checkpoint-input.txt"
-    source.write_text("frozen official input", encoding="utf-8")
-    completed = root / "checkpoint-completed.json"
-    write_json(completed, {"status": "VERIFIED", "question_id": "Q1"})
-    blockers = [{
-        "category": "evidence",
-        "reason": "The required independent evidence is currently unavailable.",
-        "required_material": "Provide the missing independent evidence file.",
-        "affected_ids": ["Q1"],
-        "resume_condition": "Verify the new evidence and resume from the frozen input.",
-    }] if final_state == "BLOCKED" else []
-    times = [iso(index) for index in range(len(state_history))]
+    if blockers is None:
+        blockers = [{
+            "category": "evidence",
+            "reason": "The required independent evidence is currently unavailable.",
+            "required_material": "Provide the missing independent evidence file.",
+            "affected_ids": ["Q1"],
+            "resume_condition": "Verify the new evidence and resume from the frozen input.",
+        }] if final_state == "BLOCKED" else []
     data = {
         "schema_version": "1.0",
         "stage": stage,
         "stage_status": final_state,
         "visibility_status": VISIBILITY_BY_STAGE_STATUS[final_state],
-        "state_history": [
-            {"state": state, "at": at, "actor_id": "executor"}
-            for state, at in zip(state_history, times)
-        ],
         "blockers": blockers,
         "checkpoint": {
-            "saved_at": iso(len(state_history)),
-            "actor_id": "executor",
-            "environment": "Python 3 verified environment",
-            "next_action": "Continue from the frozen input after the condition is met.",
+            "saved_at": iso(6),
+            "next_action": "Continue from the last trusted version after the condition is met.",
             "resume_from": "EXECUTING",
-            "last_trusted_version_id": None,
-            "completed_steps": ["LOAD_GUIDE"],
-            "completed_artifacts": [{
-                "id": "input-inventory",
-                "path": completed.name,
-                "sha256": hash_file(completed),
-            }],
-            "frozen_inputs": [{
-                "path": source.name,
-                "sha256": hash_file(source),
-            }],
-            "blocker_handling": {
-                "status": "COMPLETE",
-                "entered_at": times[-1],
-                "blocker_indices": list(range(len(blockers))),
-            } if final_state == "BLOCKED" else None,
         },
     }
     path = root / "checkpoint.json"
@@ -595,7 +558,7 @@ class StageGateTests(unittest.TestCase):
             self.assertTrue(any("after every initial report seal" in error for error in errors))
             self.assertTrue(any("gate_checks" in error for error in errors))
 
-    def test_state_history_cannot_claim_review_or_pass_before_freeze(self) -> None:
+    def test_workflow_record_requires_review_plan(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             manifest = build_manifest(root, 1)
@@ -606,17 +569,30 @@ class StageGateTests(unittest.TestCase):
             )
             path = root / item["path"]
             workflow = json.loads(path.read_text(encoding="utf-8"))
-            workflow["state_history"] = [
-                {"state": "NOT_STARTED", "at": iso(0), "actor_id": "executor"},
-                {"state": "EXECUTING", "at": iso(0, 30), "actor_id": "executor"},
-                {"state": "SELF_REVIEW", "at": iso(1), "actor_id": "executor"},
-                {"state": "EXPERT_REVIEW", "at": iso(2), "actor_id": "executor"},
-                {"state": "PASS", "at": iso(3), "actor_id": "gate"},
-            ]
+            workflow.pop("review_plan")
             write_json(path, workflow)
             update_workflow_hash(root, manifest)
             self.assertTrue(any(
-                "state history does not prove PASS" in error
+                "review role plan" in error
+                for error in validate(manifest, 1, trusted_root_payload())
+            ))
+
+    def test_review_cannot_start_before_candidate_freeze(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            manifest = build_manifest(root, 1)
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+            item = next(
+                value for value in data["artifacts"]
+                if value["id"] == "stage-workflow-record"
+            )
+            path = root / item["path"]
+            workflow = json.loads(path.read_text(encoding="utf-8"))
+            workflow["review_started_at"] = iso(2)
+            write_json(path, workflow)
+            update_workflow_hash(root, manifest)
+            self.assertTrue(any(
+                "freeze/review/deliberation order" in error
                 for error in validate(manifest, 1, trusted_root_payload())
             ))
 
@@ -708,32 +684,46 @@ class StageGateTests(unittest.TestCase):
 
     def test_pass_can_transition_to_blocked_checkpoint(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
-            path = build_checkpoint(
-                Path(temp),
-                ["NOT_STARTED", "EXECUTING", "SELF_REVIEW", "EXPERT_REVIEW", "PASS", "BLOCKED"],
-                "BLOCKED",
-            )
+            path = build_checkpoint(Path(temp), "BLOCKED")
             self.assertEqual(validate_checkpoint(path, 1), [])
 
     def test_resume_checkpoint_requires_blocked_to_executing(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
-            path = build_checkpoint(
-                Path(temp),
-                ["NOT_STARTED", "EXECUTING", "BLOCKED", "EXECUTING"],
-                "EXECUTING",
-            )
+            path = build_checkpoint(Path(temp), "EXECUTING")
             self.assertEqual(validate_checkpoint(path, 1), [])
 
-    def test_checkpoint_requires_initial_state_and_completed_work(self) -> None:
+    def test_blocked_checkpoint_requires_blockers(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            path = build_checkpoint(root, ["BLOCKED"], "BLOCKED")
+            path = build_checkpoint(Path(temp), "BLOCKED", blockers=[])
+            errors = validate_checkpoint(path, 1)
+            self.assertTrue(any(
+                "non-empty structured blockers" in error for error in errors
+            ))
+
+    def test_non_blocked_checkpoint_cannot_carry_blockers(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            path = build_checkpoint(Path(temp), "EXECUTING", blockers=[{
+                "category": "evidence",
+                "reason": "Leftover blocker from an earlier state.",
+                "required_material": "Nothing is actually required here.",
+                "affected_ids": ["Q1"],
+                "resume_condition": "No condition should be needed.",
+            }])
+            errors = validate_checkpoint(path, 1)
+            self.assertTrue(any(
+                "cannot carry blockers" in error for error in errors
+            ))
+
+    def test_checkpoint_resume_from_must_be_non_pass_state(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            path = build_checkpoint(Path(temp), "BLOCKED")
             data = json.loads(path.read_text(encoding="utf-8"))
-            data["checkpoint"]["completed_steps"] = []
+            data["checkpoint"]["resume_from"] = "PASS"
             write_json(path, data)
             errors = validate_checkpoint(path, 1)
-            self.assertTrue(any("state history/timing" in error for error in errors))
-            self.assertTrue(any("completed-work" in error for error in errors))
+            self.assertTrue(any(
+                "saved_at/next_action/resume_from" in error for error in errors
+            ))
 
     def test_cli_requires_external_trust_root(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

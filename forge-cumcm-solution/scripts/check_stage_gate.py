@@ -16,8 +16,7 @@ import sys
 from pathlib import Path
 
 from gate_common import (
-    instant_after, instant_equal, instant_not_before, parse_instant,
-    strictly_increasing,
+    instant_after, instant_equal, parse_instant,
 )
 
 
@@ -31,15 +30,6 @@ WORKFLOW_STEPS = (
     "FREEZE_CANDIDATE",
     "INDEPENDENT_BLIND_REVIEW",
 )
-LEGAL_STAGE_TRANSITIONS = {
-    "NOT_STARTED": {"EXECUTING", "BLOCKED"},
-    "EXECUTING": {"SELF_REVIEW", "BLOCKED"},
-    "SELF_REVIEW": {"EXPERT_REVIEW", "BLOCKED"},
-    "EXPERT_REVIEW": {"REVISION", "PASS", "BLOCKED"},
-    "REVISION": {"SELF_REVIEW", "BLOCKED"},
-    "BLOCKED": {"EXECUTING"},
-    "PASS": {"EXECUTING", "REVISION", "BLOCKED"},
-}
 VISIBILITY_BY_STAGE_STATUS = {
     "NOT_STARTED": "INTERNAL_WORKING",
     "EXECUTING": "INTERNAL_WORKING",
@@ -68,24 +58,22 @@ ROLES = {
 ARTIFACTS = {
     1: {
         "input-inventory", "research-record", "proposal-input-packet",
-        "proposal-set", "proposal-selection", "task-matrix", "dependency-map",
-        "scope-ledger", "core-mechanism", "assumption-register",
-        "five-layer-model", "model-interfaces", "method-map",
-        "validation-plan", "data-validity-plan", "risk-register",
-        "official-requirements", "stage1-contract", "version-index",
-        "execution-record", "stage-workflow-record",
+        "proposal-set", "proposal-selection", "task-matrix",
+        "core-mechanism", "assumption-register", "model-interfaces",
+        "method-map", "risk-register", "stage1-contract",
+        "modeling-summary", "version-index", "execution-record",
+        "stage-workflow-record",
     },
     2: {
-        "research-record", "code-bundle", "environment-record", "run-commands",
+        "research-record", "code-bundle", "run-commands",
         "result-files", "constraint-certificate", "independent-validation",
-        "sensitivity-analysis", "evidence-ledger", "number-ledger",
-        "figures-manifest", "reproduction-record", "data-validity-audit",
+        "sensitivity-analysis", "number-ledger", "figures-manifest",
+        "reproduction-record", "data-validity-audit",
         "result-evidence-contract", "execution-record", "version-index",
         "stage-workflow-record",
     },
     3: {
-        "research-record", "editable-paper", "final-pdf", "abstract-audit",
-        "formula-symbol-citation-audit", "figure-table-audit",
+        "research-record", "editable-paper", "final-pdf",
         "consistency-audit", "submission-inventory", "integrity-audit",
         "paper-evidence-contract", "execution-record", "version-index",
         "stage-workflow-record",
@@ -94,8 +82,7 @@ ARTIFACTS = {
 GATE_CHECKS = {
     1: {
         "inputs_readable", "official_rules_checked", "task_closed",
-        "interfaces_closed", "method_feasible", "validation_executable",
-        "data_validity_closed",
+        "interfaces_closed", "method_feasible",
     },
     2: {
         "baseline_passed", "all_questions_answered", "constraints_passed",
@@ -557,7 +544,6 @@ def validate_execution_record(
             not isinstance(item, dict)
             or not isinstance(item.get("guide_section"), str)
             or not isinstance(item.get("current_task_action"), str)
-            or len(item["current_task_action"].strip()) < 20
             or not set(item.get("evidence_artifact_ids", [])).issubset(artifact_ids)
             or not item.get("evidence_artifact_ids")
             for item in applications
@@ -579,9 +565,7 @@ def validate_execution_record(
             or not isinstance(item.get("question_id"), str)
             or not item["question_id"].strip()
             or not isinstance(item.get("task"), str)
-            or len(item["task"].strip()) < 20
             or not isinstance(item.get("acceptance"), str)
-            or len(item["acceptance"].strip()) < 20
             or item.get("status") != "COMPLETE"
             or not set(item.get("evidence_artifact_ids", [])).issubset(artifact_ids)
             or not item.get("evidence_artifact_ids")
@@ -614,18 +598,10 @@ def validate_execution_record(
     ):
         errors.append("execution-record: five pre-review milestones are required")
     else:
-        for index, item in enumerate(steps):
+        for item in steps:
             instant = parse_instant(item.get("completed_at"))
-            if (
-                item.get("sequence") != index + 1
-                or item.get("status") != "COMPLETE"
-                or instant is None
-                or not isinstance(item.get("actor_id"), str)
-                or not item["actor_id"].strip()
-                or not set(item.get("evidence_artifact_ids", [])).issubset(artifact_ids)
-                or not item.get("evidence_artifact_ids")
-            ):
-                errors.append(f"execution-record: step[{index}] is incomplete")
+            if instant is None:
+                errors.append("execution-record: milestone time is invalid")
             step_times.append(instant)
         if any(
             left is None or right is None or left >= right
@@ -671,65 +647,6 @@ def validate_workflow(
         or parse_instant(review_completed) < deliberation_started
     ):
         errors.append("stage-workflow-record: freeze/review/deliberation order is invalid")
-    history = record.get("state_history")
-    states = [
-        item.get("state") if isinstance(item, dict) else None for item in history or []
-    ]
-    times = [
-        item.get("at") if isinstance(item, dict) else None for item in history or []
-    ]
-    parsed_times = [parse_instant(value) for value in times]
-    expert_indices = [
-        index for index, state in enumerate(states) if state == "EXPERT_REVIEW"
-    ]
-    self_indices = [
-        index for index, state in enumerate(states) if state == "SELF_REVIEW"
-    ]
-    executing_indices = [
-        index for index, state in enumerate(states) if state == "EXECUTING"
-    ]
-    last_expert_at = (
-        parsed_times[expert_indices[-1]] if expert_indices else None
-    )
-    first_self_at = parsed_times[self_indices[0]] if self_indices else None
-    first_executing_at = (
-        parsed_times[executing_indices[0]] if executing_indices else None
-    )
-    pass_at = parsed_times[-1] if parsed_times else None
-    frozen_value = parse_instant(frozen_at)
-    review_started_value = parse_instant(review_started)
-    review_completed_value = parse_instant(review_completed)
-    if (
-        not isinstance(history, list)
-        or not history
-        or states[0] != "NOT_STARTED"
-        or states[-1] != "PASS"
-        or not strictly_increasing(times)
-        or any(
-            right not in LEGAL_STAGE_TRANSITIONS.get(left, set())
-            for left, right in zip(states, states[1:])
-        )
-        or any(
-            not isinstance(item, dict)
-            or not isinstance(item.get("actor_id"), str)
-            or not item["actor_id"].strip()
-            for item in history
-        )
-        or first_executing_at is None
-        or first_self_at is None
-        or last_expert_at is None
-        or pass_at is None
-        or frozen_value is None
-        or review_started_value is None
-        or review_completed_value is None
-        or not first_executing_at < first_self_at < frozen_value
-        or last_expert_at != review_started_value
-        or deliberation_started is None
-        or pass_at <= deliberation_started
-        or pass_at > review_completed_value
-        or not instant_not_before(review_completed, times[-1])
-    ):
-        errors.append("stage-workflow-record: state history does not prove PASS")
 
 
 def collect_prior_identity(
@@ -901,99 +818,19 @@ def validate_checkpoint(manifest_path: Path, expected_stage: int) -> list[str]:
     if not isinstance(checkpoint, dict):
         errors.append("checkpoint object is required")
         return errors
-    root = manifest_path.parent.resolve()
-    frozen = checkpoint.get("frozen_inputs")
-    if not isinstance(frozen, list) or not frozen:
-        errors.append("checkpoint frozen_inputs must be non-empty")
-    else:
-        for index, item in enumerate(frozen):
-            path = safe_file(
-                root,
-                item.get("path") if isinstance(item, dict) else None,
-                f"checkpoint.input[{index}]",
-                errors,
-            )
-            if (
-                path is None
-                or not isinstance(item.get("sha256"), str)
-                or digest(path) != item["sha256"].lower()
-            ):
-                errors.append(f"checkpoint.input[{index}] SHA-256 mismatch")
-    history = data.get("state_history")
-    states = [
-        item.get("state") if isinstance(item, dict) else None for item in history or []
-    ]
-    times = [
-        item.get("at") if isinstance(item, dict) else None for item in history or []
-    ]
     if (
-        not isinstance(history, list)
-        or not history
-        or states[0] != "NOT_STARTED"
-        or states[-1] != state
-        or not strictly_increasing(times)
-        or any(
-            right not in LEGAL_STAGE_TRANSITIONS.get(left, set())
-            for left, right in zip(states, states[1:])
-        )
-        or not instant_not_before(checkpoint.get("saved_at"), times[-1])
-    ):
-        errors.append("checkpoint state history/timing is invalid")
-    completed_steps = checkpoint.get("completed_steps")
-    completed_artifacts = checkpoint.get("completed_artifacts")
-    trusted_version = checkpoint.get("last_trusted_version_id")
-    if (
-        not isinstance(completed_steps, list)
-        or not completed_steps
-        or any(not isinstance(item, str) or not item.strip() for item in completed_steps)
-        or not isinstance(completed_artifacts, list)
-        or trusted_version is not None
-        and (
-            not isinstance(trusted_version, str)
-            or HEX64.fullmatch(trusted_version) is None
-        )
-        or not isinstance(checkpoint.get("resume_from"), str)
-        or checkpoint["resume_from"] not in VISIBILITY_BY_STAGE_STATUS
-        or checkpoint["resume_from"] == "PASS"
-    ):
-        errors.append("checkpoint completed-work/trusted-version fields are incomplete")
-    else:
-        for index, item in enumerate(completed_artifacts):
-            path = safe_file(
-                root,
-                item.get("path") if isinstance(item, dict) else None,
-                f"checkpoint.completed_artifact[{index}]",
-                errors,
-            )
-            if (
-                path is None
-                or not isinstance(item.get("id"), str)
-                or not item["id"].strip()
-                or not isinstance(item.get("sha256"), str)
-                or digest(path) != item["sha256"].lower()
-            ):
-                errors.append(
-                    f"checkpoint.completed_artifact[{index}] is invalid"
-                )
-    if (
-        not isinstance(checkpoint.get("actor_id"), str)
-        or not checkpoint["actor_id"].strip()
-        or not isinstance(checkpoint.get("environment"), str)
-        or len(checkpoint["environment"].strip()) < 10
+        parse_instant(checkpoint.get("saved_at")) is None
         or not isinstance(checkpoint.get("next_action"), str)
-        or len(checkpoint["next_action"].strip()) < 20
+        or not checkpoint["next_action"].strip()
+        or checkpoint.get("resume_from") not in VISIBILITY_BY_STAGE_STATUS
+        or checkpoint.get("resume_from") == "PASS"
     ):
-        errors.append("checkpoint metadata is incomplete")
+        errors.append("checkpoint saved_at/next_action/resume_from are incomplete")
     blockers = data.get("blockers")
     if state == "BLOCKED":
-        handling = checkpoint.get("blocker_handling")
         if (
             not isinstance(blockers, list)
             or not blockers
-            or not isinstance(handling, dict)
-            or handling.get("status") != "COMPLETE"
-            or parse_instant(handling.get("entered_at")) is None
-            or handling.get("blocker_indices") != list(range(len(blockers)))
             or any(
                 not isinstance(item, dict)
                 or not all(
@@ -1008,7 +845,7 @@ def validate_checkpoint(manifest_path: Path, expected_stage: int) -> list[str]:
                 for item in blockers
             )
         ):
-            errors.append("BLOCKED checkpoint requires structured blocker handling")
+            errors.append("BLOCKED checkpoint requires non-empty structured blockers")
     elif blockers:
         errors.append("non-BLOCKED checkpoint cannot carry blockers")
     return errors
