@@ -21,7 +21,7 @@ description: 执行 forge-cumcm-solution 的阶段二：把已冻结的 CUMCM �
 - 路径、参数、场景和随机种子可配置；
 - 主程序、函数、配置、依赖和完整命令齐全；
 - 方程、变量、约束与代码位置逐项映射；
-- 在 `execution-record` 中记录真实环境、版本、日志、退出码、种子和异常状态，以及参数值、来源、搜索范围、停止准则、资源预算、实际终止原因和最终残差/gap/迭代数；
+- 在 `reproduction-record` 中记录真实环境、版本、日志、退出码、种子和异常状态，以及参数值、来源、搜索范围、停止准则、资源预算、实际终止原因和最终残差/gap/迭代数；
 - 核心数字、表格、图和规定结果文件由同一运行生成。
 
 基线失败时先查题意、数据、机制、尺度和实现，不用更复杂模型掩盖错误。改进只能由基础假设、精度、规模或数据结构的实际失效触发，并记录增益、代价和新风险。
@@ -84,7 +84,6 @@ description: 执行 forge-cumcm-solution 的阶段二：把已冻结的 CUMCM �
 - `sensitivity-analysis`（可包含不适用理由及替代稳健性检查）
 - `number-ledger`、`figures-manifest`
 - `reproduction-record`（含环境版本）、`data-validity-audit`、`result-evidence-contract`（逐问登记 EVID-* 证据）
-- `execution-record`、`version-index`、`stage-workflow-record`
 
 执行者先按阶段二八席量表，从数值、工程、实验统计、数据、性能、复现、可视化和模型—代码一致性逐席攻击并修正。随后按[评审量表](../../references/review-rubrics.md)调用八个全新独立身份；需要时增加 `ADDITIONAL-*`。
 

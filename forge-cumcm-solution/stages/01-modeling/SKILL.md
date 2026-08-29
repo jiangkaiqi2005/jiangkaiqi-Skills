@@ -74,7 +74,7 @@ description: 执行 forge-cumcm-solution 的阶段一：读取 CUMCM 赛题、�
 - `proposal-input-packet`、`proposal-set`、`proposal-selection`
 - `task-matrix`（含小问依赖与口径冻结）、`core-mechanism`（含五层展开）、`assumption-register`
 - `model-interfaces`、`method-map`、`risk-register`、`stage1-contract`
-- `modeling-summary`、`execution-record`、`version-index`、`stage-workflow-record`
+- `modeling-summary`
 
 `modeling-summary` 是阶段一交付时给用户读的主文件：一个 markdown 总结，至少写清问题描述（题意、对象、逐问任务）和建模方法（核心机制、关键假设、模型与方法选择），不堆流程细节。
 
