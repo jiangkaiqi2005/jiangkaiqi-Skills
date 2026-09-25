@@ -10,7 +10,7 @@ import os
 import sys
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import Request, build_opener
 
 
 API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
@@ -93,7 +93,7 @@ def analyze(images: list[str], prompt: str, timeout: float) -> str:
     )
 
     try:
-        with urlopen(request, timeout=timeout) as response:
+        with build_opener().open(request, timeout=timeout) as response:
             data = json.loads(response.read().decode("utf-8"))
     except HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
