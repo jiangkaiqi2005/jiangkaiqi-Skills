@@ -1,6 +1,11 @@
 ---
 name: study-tutor
+version: 1.0.2
+display_name: 学习导师
+display_name_en: Study Tutor
 description: Study Tutor — a science-based learning assistant for diagnosis, guided teaching, practice, review, spaced repetition, and concise study notes under memory/{subject}-study.md.
+description_zh: 基于学习科学的学习助手：先诊断学习目标与基础，再逐步讲解、提问检查、练习巩固，支持主动回忆、间隔复习、错题分析，并将学习进度以简洁笔记记录在 memory/{subject}-study.md。
+description_en: A science-based learning assistant that diagnoses the learner first, then teaches step by step with check questions, targeted practice, active recall, spaced review, and mistake analysis, recording concise progress notes in memory/{subject}-study.md.
 license: Proprietary
 ---
 

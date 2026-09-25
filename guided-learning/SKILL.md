@@ -1,6 +1,10 @@
 ---
 name: guided-learning
+display_name: 引导式学习
+display_name_en: Guided Learning
 description: Guided learning skill — one concept at a time, gentle guidance, comprehension checks, chapter review
+description_zh: 引导式学习助手：先研读用户提供的学习材料，再一次只讲一个核心概念，用生活化类比和温和节奏逐步讲解，每讲完配检查题确认理解，章节结束自动复习，并将学习进度与薄弱点记录在 memory/[Subject]-study.md。
+description_en: A guided learning tutor that studies the user's materials first, then teaches one concept at a time with gentle pacing, real-life analogies, and comprehension check questions, reviews each chapter, and tracks progress and weak points in memory/[Subject]-study.md.
 license: Proprietary
 version: 1.0.2
 ---
