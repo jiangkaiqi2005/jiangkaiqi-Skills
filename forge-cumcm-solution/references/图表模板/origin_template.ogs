@@ -1,0 +1,12 @@
+[Main]
+// Set an absolute path before running this section in Origin.
+string file$ = "C:\YOUR_FOLDER\a175_mesh.csv";
+newbook;
+impasc fname:=file$;
+// XY line + symbols; numerical X preserves unequal mesh-step distances.
+plotxy iy:=(1,2) plot:=202;
+label -xb Mesh step (m);
+label -yl Power per mirror area (kW/m\+(2));
+label -p 5 95 Source: A175 (2023), PDF p.14, Table 3;
+// Set one blue line, white background and light Y grid in Plot Details.
+// Keep numerical axes; do not add 3D effects or smoothing.
