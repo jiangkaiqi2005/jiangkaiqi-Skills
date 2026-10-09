@@ -1,0 +1,3 @@
+interface:
+  display_name: "Claude 远端自动代理"
+  short_description: "配置 Claude Desktop SSH 自动代理、定位登录失败并复用远端 CLI"
