@@ -1,0 +1,4 @@
+interface:
+  display_name: "个人写作风格"
+  short_description: "按你的中文表达习惯写消息和研究进展，保留直接语气、具体理由和不确定性"
+  default_prompt: "使用 $personal-writing-style，把下面的内容写成像我平时说话的中文。"
