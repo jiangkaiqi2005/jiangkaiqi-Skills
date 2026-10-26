@@ -1,0 +1,4 @@
+interface:
+  display_name: "流程式学习"
+  short_description: "先画全景流程图并由浅入深讲完整条主线，再按疑问逐层深挖"
+  default_prompt: "使用 $process-learning，按流程带我学下面这个主题：先讲整体流程和每一步干什么，讲完再问我哪里需要深挖。"
