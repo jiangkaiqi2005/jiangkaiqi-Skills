@@ -1,0 +1,3 @@
+interface:
+  display_name: "Codex/Claude 远端常驻代理"
+  short_description: "用常驻 SSH 反向隧道给远端 Codex 和 Claude 提供代理，排障断网与登录失败"

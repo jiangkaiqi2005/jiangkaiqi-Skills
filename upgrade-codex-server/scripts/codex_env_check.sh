@@ -36,11 +36,11 @@ else
 fi
 [ -d "$STANDALONE/releases" ] && ls -1 "$STANDALONE/releases" | sed 's/^/       release: /'
 
-# 3. 代理端口监听（隧道由 Windows 端 SSH RemoteForward 建立）
+# 3. 代理端口监听（由 Windows 端常驻 SSH 反向隧道建立，见 codex-claude-ssh-proxy）
 if ss -tln 2>/dev/null | grep -q ":$PROXY_PORT "; then
   ok "proxy port $PROXY_PORT listening"
 else
-  bad "proxy port $PROXY_PORT NOT listening — 让用户在 Windows 重连 SSH（config 条目需含 RemoteForward $PROXY_PORT 127.0.0.1:7897）"
+  bad "proxy port $PROXY_PORT NOT listening — 常驻隧道未运行或端口被占：让用户在 Windows 查计划任务和隧道日志（见 codex-claude-ssh-proxy）"
 fi
 if ss -tln 2>/dev/null | grep -q ":17897 "; then
   warn "port 17897 also listening — 本服务器为多人共用，可能被他人 RemoteForward 占用，勿再使用该端口"

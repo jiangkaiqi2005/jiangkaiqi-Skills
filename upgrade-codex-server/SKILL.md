@@ -1,6 +1,6 @@
 ---
 name: upgrade-codex-server
-description: 在无 sudo 的共用 SSH 服务器上升级 OpenAI Codex CLI（standalone 布局）并排障代理隧道与桌面端识别问题。Use when the user asks to 升级/更新 codex、update Codex CLI on the server、桌面端识别不到新版本、缺少 codex-code-mode-host、终端命令无法启动、codex 断网/代理不通、RemoteForward 隧道问题、或 codex update 假成功。
+description: 在无 sudo 的共用 SSH 服务器上升级 OpenAI Codex CLI（standalone 布局）并排障代理隧道与桌面端识别问题。Use when the user asks to 升级/更新 codex、update Codex CLI on the server、桌面端识别不到新版本、缺少 codex-code-mode-host、终端命令无法启动、codex 断网/代理不通、SSH 反向隧道问题、或 codex update 假成功。
 ---
 
 # 升级服务器端 Codex CLI（standalone + SSH 反向隧道）
@@ -12,9 +12,9 @@ description: 在无 sudo 的共用 SSH 服务器上升级 OpenAI Codex CLI（sta
   - `releases/<版本>-x86_64-unknown-linux-musl/` 每版本一个目录
   - `current` 软链指向当前版本，升级 = 新建目录 + 切软链
   - 完整目录必须含：`bin/codex`、`bin/codex-code-mode-host`、`codex-path/rg`、`codex-resources/{bwrap,zsh}`、`codex-package.json`
-- 代理链路：服务器上的端口是 **Windows 侧 SSH 反向隧道**（`~/.ssh/config` 的 `codex-besci` 条目含 `RemoteForward 17898 127.0.0.1:7897`，7897 是 Windows 上的 Clash 混合端口）。用户用桌面端/SSH 连服务器时隧道自动建立，断开自动消失——**不需要手动开隧道窗口**
+- 代理链路：服务器上的 17898 由 **Windows 侧常驻 SSH 反向隧道**转发到 Clash 混合端口 7897。隧道是登录自启的计划任务，断线自动重连，和桌面端连接无关；`codex-besci` 条目**不带 `RemoteForward`**。隧道的建立、换端口和排障都按 `codex-claude-ssh-proxy` skill 处理
 - 服务器无 sudo、无真 curl（可能有一个 wget 垫片 `~/.local/bin/curl`）、无 npm；python3 可用
-- 本机是多人共用服务器：**代理监听端口会被其他同学的 RemoteForward 抢占**（17897 已被占，现用 17898）。端口被占时换新端口：改 Windows config 的 RemoteForward + 包装脚本两处
+- 本机是多人共用服务器：**代理监听端口会被其他同学的 RemoteForward 抢占**（17897 已被占，现用 17898）。端口被占时换新端口：改常驻隧道的 `-RemotePorts` + 包装脚本两处
 
 ## 标准升级流程
 
@@ -33,8 +33,8 @@ description: 在无 sudo 的共用 SSH 服务器上升级 OpenAI Codex CLI（sta
 | 桌面端识别旧版本 | 远程 `codex app-server` 是常驻进程，升级后旧进程还活着 | 杀掉 gaohb 名下 `codex.*app-server` 进程 + `rm ~/.codex/app-server-control/app-server-control.sock`，桌面端重连 |
 | 所有终端命令无法启动，报缺 `bin/codex-code-mode-host` | 桌面端固定传 `-c features.code_mode_host=true`，而 GitHub release tar.gz 只含主程序 | 用 `install_codex_from_npm.sh` 重装（npm 平台包含全套组件）；不要用 GitHub tar.gz 手动拼装 |
 | `codex update` 报 "Update ran successfully" 但版本没变 | 假成功：本机无 curl，内部 `curl \| sh` 静默失败 | 不信它；用体检脚本 + npm 安装器。若隧道健康也可先给 curl 造 wget 垫片再跑 `codex update` |
-| 隧道 baidu 通、境外全 FAIL（TLS EOF） | 隧道活着但指向的代理境外路由坏：节点失效，或监听端口被他人会话占用 | 先让用户在 Windows 验证 `curl.exe -x http://127.0.0.1:7897 -I https://chatgpt.com`（403+Cloudflare 头 = 通）。Windows 通、服务器不通 ⇒ 端口被占 ⇒ 换新端口（改 config RemoteForward + 包装脚本，两处都要改），重连后确认无 `Warning: remote port forwarding failed` |
-| Windows 端 `ssh -D` 报 `bind ... Permission denied` | Windows 保留端口段（Hyper-V/WSL）或端口已被桌面端自己的连接占用 | `netsh interface ipv4 show excludedportrange protocol=tcp` 查；通常桌面端已自动建好隧道，手动命令可省 |
+| 隧道 baidu 通、境外全 FAIL（TLS EOF） | 隧道活着但指向的代理境外路由坏：节点失效，或监听端口被他人会话占用 | 先让用户在 Windows 验证 `curl.exe -x http://127.0.0.1:7897 -I https://chatgpt.com`（403+Cloudflare 头 = 通）。Windows 通、服务器不通 ⇒ 端口被占 ⇒ 换新端口（改常驻隧道 `-RemotePorts` + 包装脚本，两处都要改），确认隧道日志不再出现 `remote port forwarding failed` |
+| Windows 端 `ssh -D` 报 `bind ... Permission denied` | Windows 保留端口段（Hyper-V/WSL）或端口已被别的连接占用 | `netsh interface ipv4 show excludedportrange protocol=tcp` 查；通常常驻隧道已在运行，手动命令可省 |
 | wget 走代理报 SSL EOF / urllib SSLEOFError | 不是 wget 的问题，是隧道境外路径坏 | 先修隧道再谈下载 |
 | 服务器 DNS 解析不了 github.com | 校园网无直连，一切外网必须走隧道 | 同上，修隧道 |
 

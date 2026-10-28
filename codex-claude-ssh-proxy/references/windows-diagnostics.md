@@ -44,8 +44,26 @@ C:\Users\USERNAME\AppData\Local\Packages\PACKAGE_FAMILY\LocalCache\Roaming\Claud
 
 找到 `ssh.log` 后短尾读取实际路径。过滤后为空时，核对文件长度、修改时间及原始记录，再决定下一步。
 
+## 常驻隧道状态
+
+查计划任务和隧道进程：
+
+```powershell
+Get-ScheduledTask -TaskName ssh-proxy-tunnel | Select-Object TaskName,State; Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'ssh.exe' -and $_.CommandLine -match ' -N ' } | Select-Object ProcessId,CommandLine | Format-List
+```
+
+读隧道日志末尾，日志在脚本旁边，文件名为任务名加 `.log`：
+
+```powershell
+Get-Content "$env:USERPROFILE\.ssh\ssh-proxy-tunnel.log" -Tail 30
+```
+
+日志每轮以 `connecting` 开始、以 `ssh exited (N)` 结束。反复出现 `remote port forwarding failed` 表示远端端口被占；反复出现认证或主机密钥错误，表示隧道目标别名不能用 `BatchMode` 登录。
+
 ## 复制可靠性
 
-遇到 `$env:APPDATA` 被复制成 `$env`、`$_.FullName` 变成 `$*.FullName` 或通配符插入多余反斜杠时，用完整路径和 fenced code 重新提供**单条**命令。快速进程查询或一级目录列表通常足够；先停止失去意义的递归搜索。
+- 用户贴回的命令通常在 PowerShell 中运行。环境变量写 `$env:USERPROFILE`；`$USERPROFILE` 在 PowerShell 中为空，路径会变成 `/.ssh/...`。
+- 遇到 `$env:APPDATA` 被复制成 `$env`、`$_.FullName` 变成 `$*.FullName` 或通配符插入多余反斜杠时，用完整路径和 fenced code 重新提供**单条**命令。
+- 快速进程查询或一级目录列表通常足够，失去意义的递归搜索就停下。
 
-服务器不能直接访问 Windows 时，先完成远端检查和可审阅的客户端改动，再请用户执行必要的一次性本机步骤。目标仍是由桌面端连接自动带起隧道。
+服务器不能直接访问 Windows 时，先完成远端检查和可审阅的客户端改动，再请用户执行必要的一次性本机步骤，例如注册计划任务。
