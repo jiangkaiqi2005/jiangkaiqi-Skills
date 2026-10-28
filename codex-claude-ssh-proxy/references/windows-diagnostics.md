@@ -58,7 +58,9 @@ Get-ScheduledTask -TaskName ssh-proxy-tunnel | Select-Object TaskName,State; Get
 Get-Content "$env:USERPROFILE\.ssh\ssh-proxy-tunnel.log" -Tail 30
 ```
 
-日志每轮以 `connecting` 开始、以 `ssh exited (N)` 结束。反复出现 `remote port forwarding failed` 表示远端端口被占；反复出现认证或主机密钥错误，表示隧道目标别名不能用 `BatchMode` 登录。
+任务状态为 `Ready` 而不是 `Running`，说明脚本已整体退出。查 `Get-ScheduledTaskInfo -TaskName ssh-proxy-tunnel` 的 `LastTaskResult`：`3221225786`（`0xC000013A`）表示控制台窗口被关闭。默认终端是 Windows Terminal 时，`-WindowStyle Hidden` 仍会弹出窗口，用户随手一关隧道就断了；任务动作要用 `conhost.exe --headless powershell.exe ...`，安装脚本已经这样做。
+
+日志每轮以 `connecting` 开始、以 `ssh exited (N)` 结束。只有 `connecting`、没有对应的 `ssh exited`，说明整个脚本是被直接结束的，而不是 ssh 自己退出。反复出现 `remote port forwarding failed` 表示远端端口被占；反复出现认证或主机密钥错误，表示隧道目标别名不能用 `BatchMode` 登录。
 
 ## 复制可靠性
 

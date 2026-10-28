@@ -41,6 +41,10 @@ C:\Users\25330\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Cl
 - 终端入口 `~/.local/bin/claude` 在 `~/.claude/remote/ccd-cli` 中按版本排序选择可执行文件；当时受管版本 `2.1.293-63201613aae3`，已清理手工安装的 2.1.295 standalone。
 - 备份：`~/.claude/backups/remote-config-20261009T083659Z/`，包括旧包装脚本、被删安装的包信息和 SHA-256、切换前的 `settings.before-17899.json`；不含已删除的二进制或 OAuth 令牌。
 
+## 弹窗被关导致断网（2026-10-27）
+
+首次安装用 `powershell.exe -WindowStyle Hidden` 作任务动作。本机默认终端为"让 Windows 决定"（即 Windows Terminal），窗口仍然弹出，用户关掉后隧道随之结束：`LastTaskResult` 为 `0xC000013A`，日志只有一行 `connecting`，远端两个端口消失。同一时间，一个 Claude 远程会话的后台监控命令报 `Background shell command didn't finish before the previous session ended`。任务动作已改为 `conhost.exe --headless`，需要重新运行安装脚本。
+
 ## 待验证
 
 常驻隧道安装后：远端两个端口是否在监听、每个端口的 HTTP 探测、重新登录后自动启动、断线后自动恢复、两个工具的实际消息。

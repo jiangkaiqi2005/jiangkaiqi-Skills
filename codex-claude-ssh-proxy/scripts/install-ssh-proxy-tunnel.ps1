@@ -9,8 +9,9 @@ param(
 
 $script = Join-Path $PSScriptRoot 'ssh-proxy-tunnel.ps1'
 $ports = ($RemotePorts -split '[,\s]+') -join ','  # 在会话内调用时数组会被拼成空格分隔
-$arguments = "-NoProfile -WindowStyle Hidden -File `"$script`" -Target $Target -RemotePorts $ports -LocalProxy $LocalProxy -Name $Name"
-$a = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arguments
+# conhost --headless 不创建窗口；-WindowStyle Hidden 在默认终端为 Windows Terminal 时仍会弹窗，关窗即断隧道
+$arguments = "--headless powershell.exe -NoProfile -File `"$script`" -Target $Target -RemotePorts $ports -LocalProxy $LocalProxy -Name $Name"
+$a = New-ScheduledTaskAction -Execute 'conhost.exe' -Argument $arguments
 $t = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
 $s = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
 Register-ScheduledTask -TaskName $Name -Action $a -Trigger $t -Settings $s -Description "SSH reverse tunnel: $Target $ports -> $LocalProxy" -Force | Out-Null
