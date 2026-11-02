@@ -1,88 +1,122 @@
 ---
 name: hcod-result-reporting
-description: Use when HyperCOD/VMamba experiment results are ready and Codex needs to archive train logs, choose or confirm an output root, generate train-log HTML visualizations, identify the best iteration, or collect paper-style metrics.
+description: HyperCOD 实验 run 的目录契约与交付流程。在 hcod_* 仓库里收尾训练完的 run、评测 checkpoint、生成或交付结果报告、整理或校验 work_dirs 时使用。
 ---
 
-# HCOD Result Reporting
+# HCOD 结果交付
 
-## Overview
+每个 run 是 `work_dirs/` 下的一个目录，结构固定。用户每次只下载 `report/`，所以 `report/` 必须自成一体：三件套齐全、离线可开、和评测结果一致。
 
-Archive a finished HyperCOD experiment into a clear outputs folder, produce a compact report, and verify which checkpoint should be treated as best. The core rule is to classify the experiment family before naming folders; never dump method-family results into the baseline bucket just because paths look similar.
+## 目录契约
 
-## Workflow
-
-1. Locate the source run directory and artifacts.
-   - Find `train.nohup.log`, config, checkpoints, existing `paper_metrics*`, and any previous HTML reports.
-   - Read project notes when version semantics are unclear: `CHANGELOG.md`, `version_modules.md`, run-local notes, and nearby configs.
-
-2. Choose the output family name before creating files.
-   - Inspect existing directories under the user-specified output root when one is provided. `E:\ViM\outputs` is only an example of a possible root, not a default.
-   - Use the method family, not the implementation shortcut. Examples:
-     - Basic/baseline experiments: `hcod_hsi_basic_cache_160k/<run-name>`
-     - HSC-SAM imitation experiments: `hcod_hsc_sam_cache_160k/<run-name>`
-     - RGB/spectral experiments: follow existing `hcod_rgb_*` naming.
-   - If unsure whether a run is baseline, HSC-SAM imitation, ablation, or another family, infer from run notes/configs first; ask the user only if local evidence is ambiguous.
-   - Keep child folders versioned and descriptive, for example `hcod_hsc_sam_v0.1_cache_160k`.
-
-3. Create or use the destination.
-   - If the user did not specify an output root, ask where to put the results before creating or copying files. Do not assume `E:\ViM\outputs`.
-   - If the user specifies `E:\ViM\outputs` or another existing convention, prefer that real path when mounted or accessible.
-   - If the requested drive is unavailable, create a same-structure local mirror under the repo only as a fallback, such as `outputs/<family>/<run>`, and clearly say it is not the requested root.
-   - Copy `train.nohup.log` into the destination. Do not copy unrelated run notes whose labels conflict with the method family.
-
-4. Parse the training log.
-   - Extract train points from `Iter(train)` lines: iter, loss, decode/aux losses, accuracy, lr, time.
-   - Extract validation points from `Iter(val)` summary lines: iter, `aAcc`, `mIoU`, `mAcc`, `mDice`, timing.
-   - Associate validation rows with the immediately preceding checkpoint save when the val line does not include the iter.
-
-5. Pick the best iteration.
-   - Default rule: highest validation `mIoU`; break ties by `mDice`, then `aAcc`.
-   - If the user names a different primary metric, use that and state the rule.
-   - Compare the best point with the latest point. Mention when training loss improves but validation quality regresses.
-
-6. Generate the HTML visualization.
-   - Match the style of the closest existing report when the user provides one; otherwise create a self-contained HTML file that opens directly.
-   - Include summary cards, training loss curves, validation metric curves, validation table, best-iter conclusion, paper metrics, and the reproduce command.
-   - Avoid external CDN dependencies unless the existing report already requires them.
-
-7. Establish paper-style metrics for the selected iter.
-   - Prefer running the project tool:
-
-```bash
-CUDA_VISIBLE_DEVICES=<gpu> python segmentation/tools/evaluate_hcod_paper_metrics.py \
-  <config> <checkpoint> \
-  --split test \
-  --with-flops \
-  --out-dir <destination>/paper_metrics_iter<iter>
+```
+work_dirs/                         # 根目录只放 run 目录
+  <repo>_v<版本>[_<tag>]/          # 例：hcod_3dcnn_v0.4.2.0、hcod_sam2_unet_v0.1.1.0_rgb_noada
+    run.json                       # 清单，见下文
+    config.yaml | config.py        # 本 run 实际使用的配置
+    train/                         # train.log train.nohup.log metrics.csv native_validation_latest.json training_complete.json，及训练期写出的其他 csv/json
+    checkpoints/                   # best_<指标>.pth latest.pth
+    eval/<ckpt>_e<epoch>_<split>[_<variant>]/
+                                   # summary.json summary.csv per_image.csv command.txt eval.log，及该评测的其他产物
+    analysis/<名字>/               # 可选：阈值扫描、诊断、可视化等非标准评测
+    report/                        # 交付目录
+      summary.json                 # = eval/<best>/summary.json 的复制件
+      report.html                  # 自包含：数据和图都内嵌，不引用 CDN 或外部文件
+      analysis.md                  # best 的选择依据和指标
+      validation_summary.csv       # 可选
+      figures/                     # 可选
 ```
 
-   - Save `summary_paper_metrics.json`, `summary_paper_metrics.csv`, `per_image_paper_metrics.csv`, and `metrics_command.txt`.
-   - If the command fails, debug the root cause. If valid metrics already exist from the same config/checkpoint, copying them is acceptable only with an explicit note in `metrics_command.txt` and the final response.
-   - Remove failed-run debris such as timestamped work dirs that only contain failed configs/logs.
+- **文件名不带版本号**：版本只出现在 run 目录名里。
+- **eval 目录名**：`<ckpt>` 是 checkpoint 文件名去掉 `.pth`（`best_mae`、`best_cod_mean`、`latest`），`<epoch>` 取 summary 或 checkpoint 里记录的 epoch，`<split>` 是 `val`/`test`。同一 checkpoint、同一 split 用不同协议评测时加 `_<variant>`（如 `_native512`、`_crf`）。例：`eval/best_mae_e57_test/`、`eval/latest_e100_val/`。
+- **单一事实源**：`report/summary.json` 是复制件（不是软链接，下载后不会断），源头是 `run.json` 里 `report_source` 指向的那个 eval。
+- **代码在仓库里**：评测、报告脚本放在仓库的 `tools/`（没有就用现有的 `scripts/`），`run.json` 只记命令；run 目录只放产物。
+- **仓库其他目录**：数据缓存放仓库的 `cache/`，临时诊断放 `scratch/`。
+- **父 run 的评测归父 run**：给子 run 做对比时，父 run 的 checkpoint 评测写进父 run 的 `eval/`，子 run 的 `analysis.md` 引用它的路径。
 
-8. Verify before reporting completion.
-   - Confirm expected files exist and are non-empty.
-   - Re-read the validation CSV/JSON and recompute best iter.
-   - Confirm the HTML contains embedded data, the best iter, and chart elements.
-   - Scan the destination for stale/wrong family names.
-   - State anything that could not be verified, such as unavailable `E:` mount or missing browser tooling.
+### run.json
 
-## Required Outputs
+```json
+{
+  "run": "hcod_3dcnn_v0.4.2.0",
+  "repo": "hcod_3dcnn_baseline",
+  "version": "0.4.2.0",
+  "tag": null,
+  "status": "done",
+  "git_commit": "6def3df",
+  "config": "config.yaml",
+  "source_config": "configs/hcod_3dcnn_v0.4.2.0.yaml",
+  "dataset": "HyperCOD",
+  "split": "原划分 train/val/test",
+  "best": {
+    "checkpoint": "checkpoints/best_mae.pth",
+    "epoch": 41,
+    "rule": "验证集 MAE 最低",
+    "eval": "eval/best_mae_e41_test"
+  },
+  "metrics": {"test": {"MAE": 0.00283, "S_measure": 0.844}, "val": {"MAE": 0.00234}},
+  "report_source": "eval/best_mae_e41_test/summary.json",
+  "commands": {"train": "...", "eval": "...", "report": "..."},
+  "notes": []
+}
+```
 
-- `train.nohup.log`
-- `train_log_visualization_<version>.html`
-- `validation_summary_<version>.csv`
-- `best_iter_analysis_<version>.md`
-- `paper_metrics_iter<best_iter>/summary_paper_metrics.json`
-- `paper_metrics_iter<best_iter>/summary_paper_metrics.csv`
-- `paper_metrics_iter<best_iter>/per_image_paper_metrics.csv`
-- `paper_metrics_iter<best_iter>/metrics_command.txt`
+- `status` 只取 `running`、`done`、`failed`。
+- `metrics` 抄 summary 里的核心指标，键名沿用该仓库 summary 的写法。
+- `notes` 记删掉的流程文件里值得留下的结论：验收是否通过、改名历史、评测失败原因、checkpoint 身份对不上等。
+- 查不到的字段写 `null`，在 notes 里说明原因。
 
-## Common Mistakes
+## 流程
 
-- Do not assume `hcod_hsi_basic_cache_160k` is correct just because the source work dir contains HSI/cache/160k. That folder is for baseline/basic runs.
-- Do not assume the output root. If the user did not name one, ask first.
-- Do not say files were downloaded to the requested root when only a local mirror was created.
-- Do not pick the final checkpoint as best without checking validation metrics.
-- Do not hide paper-metrics failures. Record the exact failure and whether metrics were copied from an existing successful run.
-- Do not leave wrong-name temporary outputs after the user confirms they downloaded the mirror; remove the local mirror when asked.
+### 1. 训练中
+
+训练脚本按仓库现有方式写日志和 checkpoint；pid、lock、queue、launch 记录这些运行时文件可以临时放在 run 根目录。此时 `run.json` 的 `status` 为 `running`。别的 agent 判断一个 run 是否在跑：pid 对应进程活着（`ps -p`、`nvidia-smi`），或日志几分钟内还在增长。在跑的 run 只读不动。
+
+### 2. 收尾
+
+训练结束、进程退出后：
+
+1. 训练产物移进 `train/`，checkpoint 用 `mv` 移进 `checkpoints/`（磁盘紧张；`.pth` 内容保持原样）。
+2. **删除流程审计文件**：pid、lock、queue、launch、acceptance、review、rework、gpu receipt、cleanup、protected/source inventory、verification、status 这类记录流程本身的文件。删之前把结论写进 `run.json` 的 `notes`。
+3. 写 `run.json`，`status` 改为 `done` 或 `failed`。
+
+### 3. 评测
+
+用仓库里的评测脚本，输出直接指向 `eval/<ckpt>_e<epoch>_<split>/`：
+
+- `evaluate_hcod_paper_metrics.py`（3dcnn、deeplabv3、unet）和 `evaluate_hrssd_paper_metrics.py`：`--out-dir` 必填，直接写 `summary.json`、`summary.csv`、`per_image.csv`、`command.txt`。
+- `scripts/evaluate.py`（sam2、vmamba、segman）：`--output eval/<ckpt>_e<epoch>_<split>/summary.json`；不传时写到 run 根目录 `test_<ckpt>.json`，收尾时移进对应 eval 目录并改名为 `summary.json`。
+
+stdout 存成同目录的 `eval.log`。脚本没写 `command.txt` 时手写一份完整可复现的命令。
+
+### 4. 选 best
+
+规则写进 `run.json` 的 `best.rule`，只依据验证集。默认规则：
+
+- `hcod_sam2_unet`、`hcod_vmamba_upernet`、`hcod_segman_baseline`：`best_cod_mean`（`training_complete.json` 的 `default_test_checkpoint`）。
+- `hcod_3dcnn_baseline`：`best_iou`（验证集 IoU 最高，并列依次比 Dice、更低的 MAE）。
+- `hcod_deeplabv3_baseline`、`hcod_unet_baseline`：`best_mae`。
+
+设计文档或用户指定了别的规则时以指定为准。
+
+### 5. 报告
+
+先写好 `run.json`（`best`、`report_source`），再用仓库里的 `tools/generate_report.py` 生成 `report/`。输入、产物和参数见脚本 `--help`。6 个仓库的这份脚本内容相同，改一份就要同步改其余 5 份。
+
+```bash
+python tools/generate_report.py work_dirs/<run>            # dry-run：打印每个文件是新建、覆盖还是跳过
+python tools/generate_report.py work_dirs/<run> --write
+```
+
+dry-run 没有警告、每个文件都是预期的动作时才加 `--write`。写完后看一眼 `analysis.md` 的结论是否符合实际，再跑下面的自检。
+
+## 交付前自检
+
+运行校验脚本，全部通过才算交付；检查项以脚本 docstring 为准：
+
+```bash
+python ~/.agents/skills/hcod-result-reporting/check_run.py <repo>/work_dirs/<run>
+python ~/.agents/skills/hcod-result-reporting/check_run.py --work-dirs <repo>/work_dirs   # 整个仓库
+```
+
+最后告诉用户 `report/` 的绝对路径，以及脚本没覆盖、你也没能验证的项。

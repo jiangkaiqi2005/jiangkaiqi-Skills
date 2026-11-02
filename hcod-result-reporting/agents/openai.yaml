@@ -1,4 +1,4 @@
 interface:
   display_name: "HCOD Result Reporting"
-  short_description: "Archive and analyze HCOD experiment results"
-  default_prompt: "Use $hcod-result-reporting after an HCOD experiment finishes to confirm the output location, archive logs, visualize training, pick the best iteration, and collect paper metrics."
+  short_description: "HCOD run 目录契约、评测命名与 report/ 交付"
+  default_prompt: "Use $hcod-result-reporting 收尾 HCOD run：整理成目录契约结构、评测 best checkpoint、生成 report/ 三件套并跑交付前自检。"
