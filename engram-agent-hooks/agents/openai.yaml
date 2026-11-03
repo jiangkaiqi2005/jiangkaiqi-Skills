@@ -1,0 +1,4 @@
+interface:
+  display_name: "Engram Agent Hooks"
+  short_description: "Install shared Engram recall and memory-write hooks"
+  default_prompt: "Use $engram-agent-hooks to configure shared Engram memory hooks for my installed coding agents."
