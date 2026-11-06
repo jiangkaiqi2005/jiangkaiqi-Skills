@@ -12,6 +12,7 @@ function check(event) {
     try { args = JSON.parse(args); } catch { args = {command: args}; }
   }
   const cwd = event.cwd || event.workspacePaths?.[0] || process.cwd();
+  const workbuddyRoots = [path.resolve(os.homedir(), '.workbuddy/memory'), path.resolve(cwd, '.workbuddy/memory')];
   let files = [];
   if (/^(?:Write|Edit|MultiEdit|write|edit|write_to_file|replace_file_content|multi_replace_file_content)$/i.test(tool)) {
     files = [args.file_path, args.TargetFile, args.path];
@@ -26,7 +27,10 @@ function check(event) {
     if (typeof file !== 'string') return false;
     const target = path.resolve(cwd, file.replace(/^~(?=[\\/])/, os.homedir()));
     const relative = path.relative(os.homedir(), target).replaceAll('\\', '/');
-    return nativeRoots.test(relative);
+    return nativeRoots.test(relative) || workbuddyRoots.some(root => {
+      const inside = path.relative(root, target);
+      return inside === '' || (!path.isAbsolute(inside) && inside !== '..' && !inside.startsWith('..' + path.sep));
+    });
   });
   if (antigravity) return deny ? {decision:'deny',reason} : {decision:'allow'};
   return deny ? {hookSpecificOutput:{hookEventName:'PreToolUse',permissionDecision:'deny',permissionDecisionReason:reason}} : {};

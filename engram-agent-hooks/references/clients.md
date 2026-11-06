@@ -158,7 +158,9 @@ Install/enable through the supported marketplace/plugin flow for the actual Work
 
 Inspect the installed plugin's hook definition as well as its source. Editing source alone may leave a cached installed copy unchanged; use the supported update/reinstall route to refresh it. Existing wrappers that import the guard must invoke its exported `check(event)` and handle stdin/stdout; merely requiring the file does not run its CLI branch.
 
-WorkBuddy's overnight memory extraction is a separate mechanism with no established native path in this guard. A loaded plugin does not prove interception of that background process.
+Observed WorkBuddy sessions use the `Write` tool to append workspace memory at `<workspace>/.workbuddy/memory/YYYY-MM-DD.md`; user-level memory also exists under `~/.workbuddy/memory/`. The guard now covers both roots, resolving workspace targets from the hook event rather than treating every target as home-relative. This includes workspaces on another drive and avoids blocking neighboring directories or nested fixture paths.
+
+Keep the current file-tool matcher. Creating a directory through Bash is not evidence of a shell memory write; generic Bash/PowerShell parsing is outside this fix. Background internal or server-side persistence still needs separate evidence and is not proven intercepted by a loaded plugin.
 
 Sources: [WorkBuddy plugins](https://www.codebuddy.cn/docs/workbuddy/Plugins), [plugin reference](https://www.codebuddy.cn/docs/cli/plugins-reference), [plugin marketplaces](https://www.codebuddy.cn/docs/cli/plugin-marketplaces).
 
