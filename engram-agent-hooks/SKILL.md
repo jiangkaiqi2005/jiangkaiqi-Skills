@@ -13,7 +13,7 @@ Connect coding agents to one Engram store with two small, stateless hooks. Keep 
 - `PreToolUse`: deny recognized file writes inside known native-memory roots. Ask the agent to save to Engram only if the information still merits remembering.
 - Keep saving optional. This workflow has no Stop hook, forced summary, pending queue, or automatic transfer of rejected content.
 
-Registration covers only events the client exposes. Shell writes, dedicated memory tools, and background internal persistence need separate evidence; these scripts do not provide universal interception.
+Registration covers only events the client exposes. Shell interception handles the literal output forms documented in the WorkBuddy adapter; dynamic commands, dedicated memory tools, and background internal persistence are not universally intercepted.
 
 ## Install or repair
 
@@ -41,7 +41,7 @@ The guard resolves targets against the event workspace and matches these home-re
 .codebuddy/memories/
 ```
 
-WorkBuddy additionally matches `~/.workbuddy/memory/` and `<event workspace>/.workbuddy/memory/` using normalized absolute paths and directory boundaries, including workspaces on another drive. The event workspace comes from `cwd`, then `workspacePaths[0]`, with the hook process cwd as fallback; verify it is the actual workspace.
+WorkBuddy additionally reserves the `.workbuddy/memory/` directory namespace in normalized target paths, including home and workspace memory on any drive. Absolute targets are recognized even when the event cwd is an application directory. Neighboring names such as `.workbuddy/memory-backup/` remain unaffected.
 
 These are narrow path checks, not a ban on files named `memory`. Antigravity and DSH have no independent native-memory root in this implementation. Add a target only when its real path and tool input are established.
 
@@ -67,7 +67,7 @@ Keep confirmed, reusable knowledge, avoid duplicates, and exclude secrets.
 
 Parse changed configs and run `node --check` on deployed scripts. Check that unrelated configuration survived and each owned event is registered once.
 
-For guard changes, run `node --test scripts/engram-memory.test.cjs` from this skill directory. The synthetic cases cover WorkBuddy home/workspace paths, another drive, directory boundaries, existing guards, and unaffected tools without writing memory files.
+For guard changes, run `node --test scripts/engram-memory.test.cjs` from this skill directory. The synthetic cases cover WorkBuddy paths, wrong cwd, another drive, literal shell writes, read-only commands, existing guards, and unaffected tools without writing memory files.
 
 When diagnosing execution failures, pipe synthetic JSON through the exact configured command in the client's actual shell. Check a native-memory write is denied, an ordinary project file is unaffected, and startup returns the client's expected JSON. These checks do not write the target files or call a model.
 

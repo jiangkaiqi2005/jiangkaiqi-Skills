@@ -158,9 +158,11 @@ Install/enable through the supported marketplace/plugin flow for the actual Work
 
 Inspect the installed plugin's hook definition as well as its source. Editing source alone may leave a cached installed copy unchanged; use the supported update/reinstall route to refresh it. Existing wrappers that import the guard must invoke its exported `check(event)` and handle stdin/stdout; merely requiring the file does not run its CLI branch.
 
-Observed WorkBuddy sessions use the `Write` tool to append workspace memory at `<workspace>/.workbuddy/memory/YYYY-MM-DD.md`; user-level memory also exists under `~/.workbuddy/memory/`. The guard now covers both roots, resolving workspace targets from the hook event rather than treating every target as home-relative. This includes workspaces on another drive and avoids blocking neighboring directories or nested fixture paths.
+Observed WorkBuddy sessions write `<workspace>/.workbuddy/memory/YYYY-MM-DD.md` using both `Write` and Bash heredoc append commands. User-level memory also exists under `~/.workbuddy/memory/`. The guard reserves the `.workbuddy/memory/` directory namespace wherever it occurs in a normalized target path. This handles other drives and absolute targets with an incorrect event cwd; neighboring directory names remain unaffected. Nested directories bearing that exact reserved namespace are also covered.
 
-Keep the current file-tool matcher. Creating a directory through Bash is not evidence of a shell memory write; generic Bash/PowerShell parsing is outside this fix. Background internal or server-side persistence still needs separate evidence and is not proven intercepted by a loaded plugin.
+Append `|Bash|PowerShell` to the owned PreToolUse group's file-tool matcher in both the plugin source and installed copy. Preserve its existing commands and SessionStart handler. Reload or restart WorkBuddy to ensure running sessions load the changed matcher; successful direct invocation does not prove an old session refreshed it.
+
+The shell adapter extracts literal `>` / `>>` output targets and PowerShell `Set-Content`, `Add-Content`, `Out-File`, and `Tee-Object` paths. Quoted text and heredoc bodies are treated as content, not nested commands; descriptions are not scanned. Reads remain allowed. This is not a full shell parser: variable-computed targets, nested interpreters, arbitrary scripts, and background internal/server-side persistence are outside its guarantee. Keep saving optional and use the same Engram refusal reason.
 
 Sources: [WorkBuddy plugins](https://www.codebuddy.cn/docs/workbuddy/Plugins), [plugin reference](https://www.codebuddy.cn/docs/cli/plugins-reference), [plugin marketplaces](https://www.codebuddy.cn/docs/cli/plugin-marketplaces).
 
@@ -174,6 +176,6 @@ Sources: [WorkBuddy plugins](https://www.codebuddy.cn/docs/workbuddy/Plugins), [
 | Desktop search resolves project to a version directory | Pass the actual session workspace to `mem_current_project`, then pass the returned project explicitly. Keep the shared server workspace-independent. |
 | Claude seems unaffected | Read relevant transcript records such as `hook_success` and `hook_additional_context`; then look separately for actual Engram calls. |
 | Codex hook is installed but inactive | Inspect `/hooks`, version support, relevant managed policy, and execution host. Review changes through the supported trust UI. |
-| Native memory still appears | Identify the actual writer and path. The guard handles only recognized file tools and roots; shell and internal background writes can bypass it. |
+| Native memory still appears | Identify the writer, resolved target, loaded matcher, and execution host. Only recognized file tools and literal shell output forms are covered; dynamic commands and internal background writes can bypass them. |
 
 When verification is requested, use synthetic payloads for a matched native path, an ordinary project file, an `apply_patch` target, and a read-only `str_replace_editor` view. Expect denial only for recognized writes to native roots; standard nonmatches return `{}`, Antigravity nonmatches return `decision: allow`. Startup output must parse as the appropriate context-injection JSON. Keep stdout JSON-only and diagnostics on stderr.
