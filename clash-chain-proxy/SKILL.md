@@ -1,9 +1,14 @@
 ---
 name: clash-chain-proxy
-description: Clash Verge Rev 链式代理（机场节点做入口 + 静态住宅 SOCKS5/HTTP 做出口）的配置、验证、排障与吞吐调优。Use when 用户提到 dialer-proxy、前置代理、链式代理、1024Proxy/静态住宅 IP 一直超时（Mainland China IP banned）、出口 IP 不是住宅 IP、Clash 重启后链条失效、系统代理没接管浏览器流量、或链式代理网速慢/吞吐跑不高。
+description: Clash Verge Rev 与安卓 FlClash 链式代理（机场入口 + 静态住宅 SOCKS5/HTTP 出口）的配置、验证、排障与吞吐调优。Use when 用户配置 dialer-proxy、1024Proxy 住宅出口、FlClash 订阅覆写，或排查出口 IP 不符、入口为空、更新后链条失效及链式代理网速慢。
 ---
 
-# Clash Verge Rev 链式代理（机场入口 + 静态住宅出口）
+# Clash Verge Rev / FlClash 链式代理（机场入口 + 静态住宅出口）
+
+## 按客户端选择流程
+
+- **安卓 FlClash**：先读 [FlClash 订阅覆写](references/flclash.md)，优先检查和复用已有脚本，保留原始远程订阅。
+- **Windows Clash Verge Rev**：按下文的增强文件、运行时配置与系统代理流程处理。
 
 ## 拓扑与目的
 
@@ -45,7 +50,7 @@ description: Clash Verge Rev 链式代理（机场节点做入口 + 静态住宅
 
 ### 第 1 步：拿住宅代理信息
 
-1024Proxy 后台「获取代理 → 长效静态 ISP」导出 `socks5://<username>:<password>@<host>:<port>`。**凭据只贴进 Clash 自己的配置，不写进任何文档/脚本/仓库，也不发给别人。**
+1024Proxy 后台「获取代理 → 长效静态 ISP」导出 `socks5://<username>:<password>@<host>:<port>`。**真实凭据只留在客户端私有配置中（包括客户端内保存的覆写脚本）；文档、仓库和共享脚本模板只用占位符。截图中的凭据也不能抄进技能、提交或聊天答复。**
 
 ### 第 2 步：写「编辑节点」（proxies prepend）
 
